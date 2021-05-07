@@ -1,6 +1,10 @@
 const board = document.querySelector('.board');
 const selectionDiv = document.querySelector('.selection');
 
+// Array to store all memos used in local storage.
+let localStorageMemos = JSON.parse(localStorage.getItem('memos')) || [];
+
+let memoList = [];
 
 // Used to determine if a user is clicking and holding on the board to create a new memo.
 let mouseClicked = false;
@@ -32,7 +36,6 @@ board.addEventListener('mousedown', (e) => {
     }
 })
     
-
 board.addEventListener('mouseup', (e) => {
     mouseClicked = false;
     offsetXEnd = e.offsetX;
@@ -42,12 +45,19 @@ board.addEventListener('mouseup', (e) => {
     let height = offsetYEnd - offsetYStart;
 
     // Memo has to be larger than 50px * 50px and user should not be currently repositioning another memo.
-    if(width > 50 && height > 50 && !movingMemo){
-        new Memo(
+    if(width >= 50 && height >= 50 && !movingMemo && !resizingMemo){
+        // Create new memo
+        let memo = new Memo(
+            Date.now(),
             {left: offsetXStart, top: offsetYStart},
-            {width, height}
-        )
+            {width, height},
+            '' // Blank as no content on initialization
+        );
+        memoList.push(memo);
+        updateLocalStorage();
     }
+
+    // Hide the selection area div and change cursor back
     selectionDiv.style.width = '0px';
     selectionDiv.style.height = '0px';
     selectionDiv.style.display = 'none';
@@ -56,7 +66,7 @@ board.addEventListener('mouseup', (e) => {
 
 board.addEventListener('mousemove', (e) => {
 
-    if(mouseClicked){
+    if(mouseClicked && !movingMemo && !resizingMemo){
         offsetXCurrent = e.offsetX - offsetXStart;
         offsetYCurrent = e.offsetY - offsetYStart;
         
@@ -67,12 +77,15 @@ board.addEventListener('mousemove', (e) => {
 
 
 class Memo{
-    constructor(position, size){
+    constructor(id, position, size, content){
+        this.id = id  // Unique number
         this.position = position;
         this.size = size;
-        this.adjustSize = false;
-        this.move = false;
+        this.content = content;
+        this.moving = false 
+        this.resizing = false;
         this.createMemo();
+        
     }
 
     createMemo(){
@@ -98,23 +111,29 @@ class Memo{
 
         this.text = document.createElement('textarea');
         this.text.classList.add('text');
+        this.text.value = this.content;
+        this.text.addEventListener('keyup', this.updateText.bind(this));
+        this.text.addEventListener('blur', updateLocalStorage);
         this.div.appendChild(this.text);
 
         this.resize = document.createElement('div');
         this.resize.classList.add('resize');
         this.resize.addEventListener('mousedown', this.mouseDownResize.bind(this));
+        window.addEventListener('mousemove', this.resizeMemo.bind(this));
         this.div.appendChild(this.resize);
 
         board.appendChild(this.div);
     }
 
-    mouseDownMove(e){
+    mouseDownMove(e){;
         // Set to true to stop another memo being created whilst we are moving a memo.
         movingMemo = true;
 
         // Used in the moveMemo function.
-        this.move = true 
+        this.moving = true 
 
+        this.move.style.cursor = 'grabbing'
+        this.move.style.backgroundColor = '#bbf70655'
         // determine where the grab cursor is to position the memo relative the the offset and mouse position.
         this.movingXDist = e.clientX - this.position.left;
         this.movingYDist = e.clientY - this.position.top;
@@ -126,18 +145,28 @@ class Memo{
     }
 
     mouseUp(){
+
+        const currentPosition = {left: this.position.left, top: this.position.top};
+        Object.freeze(currentPosition);
+
+        const currentSize = {width: this.size.width, height: this.size.height}
+        Object.freeze(currentSize);
+    
+
         movingMemo = false;
         resizingMemo = false;
 
-        this.move = false 
-        this.resize = false;
+        this.moving = false 
+        this.resizing = false;
 
-        // Rest the div position once the element has been moved
+        this.move.style.cursor = 'grab'
+        this.move.style.backgroundColor = 'transparent'
+        // Reset the div position once the element has been moved
         this.position.top = this.div.offsetTop;
         this.position.left = this.div.offsetLeft;
 
         // Adjust memo positions if they are dragged out of bounds
-
+   
         if(this.position.top < 0){
             this.position.top = 0;
             this.div.style.top = 0;
@@ -161,22 +190,71 @@ class Memo{
             this.position.left = boardRight - (this.size.width + 10);
             this.div.style.left= `${this.position.left}px`;
         }
+    
+        // Stringify to compare the objects as objects compare on a reference basis.
+        if(JSON.stringify(this.position) != JSON.stringify(currentPosition) || JSON.stringify(this.size) != JSON.stringify(currentSize) ){
+            // Update memo position and size data in local storage.
+            updateLocalStorage();
+            
+        }
     }
 
     deleteMemo(){
+        memoList = memoList.filter(memo => {
+            return memo.id != this.id;
+        })
+    
+        updateLocalStorage()
         this.div.remove();
     }
 
     moveMemo(e){   
-        if(this.move){
+        
+        if(this.moving){
             this.div.style.top = `${e.clientY - this.movingYDist}px`;
             this.div.style.left = `${e.clientX - this.movingXDist}px`;   
         }
     }
 
-    reseizeMemo(){
+    resizeMemo(e){
+        if(this.resizing){
 
+            let height = e.clientY - this.position.top;
+            let width = e.clientX - this.position.left;
+
+            //limit the size to a minimum of 50 px * 50px
+            if(width >= 50 && height >= 50){
+                this.size.height = height
+                this.size.width = width
+                
+                this.div.style.height = `${height}px`;
+                this.div.style.width = `${width}px`;  
+            }        
+        }
+        updateLocalStorage()
+    }
+
+    updateText(){
+        this.content = this.text.value;
     }
 }
+
+
+localStorageMemos.forEach(memo => {
+    let storedMemo = new Memo(
+        memo.id,
+        {left: memo.position.left, top: memo.position.top},
+        {width: memo.size.width, height: memo.size.height},
+        memo.content
+    )
+    memoList.push(storedMemo);
+})
+
+function updateLocalStorage(){  
+    if(localStorage.getItem('memos') != JSON.stringify(memoList)){
+        console.log('Local storage updated')
+        localStorage.setItem('memos', JSON.stringify(memoList)); 
+    } 
+};
 
 
