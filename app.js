@@ -15,19 +15,24 @@ let movingMemo = false;
 // Used to determine if the user is currently resizing a memo.
 let resizingMemo = false;
 
+// Mouse coordinates to determine the size and position of new memos
 let offsetXStart = 0;
 let offsetYStart = 0;
 let offsetXEnd = 0;
 let offsetYEnd = 0;
 
+// current offsets used for the selection div
 let offsetYCurrent = 0;
 let offetXCurrent = 0;
 
 board.addEventListener('mousedown', (e) => {
     mouseClicked = true;
+
+    // set starting mouse coordinates
     offsetXStart = e.offsetX;
     offsetYStart = e.offsetY;
 
+    // if another memo is not currently being moved around.
     if(!movingMemo){
         selectionDiv.style.top = `${offsetYStart}px`;
         selectionDiv.style.left = `${offsetXStart}px`;
@@ -101,7 +106,6 @@ class Memo{
         this.move.classList.add('move');
         this.move.addEventListener('mousedown', this.mouseDownMove.bind(this));
         window.addEventListener('mouseup', this.mouseUp.bind(this));
-        window.addEventListener('mousemove', this.moveMemo.bind(this));
         this.div.appendChild(this.move);
 
         this.close = document.createElement('div');
@@ -119,7 +123,6 @@ class Memo{
         this.resize = document.createElement('div');
         this.resize.classList.add('resize');
         this.resize.addEventListener('mousedown', this.mouseDownResize.bind(this));
-        window.addEventListener('mousemove', this.resizeMemo.bind(this));
         this.div.appendChild(this.resize);
 
         board.appendChild(this.div);
@@ -209,28 +212,28 @@ class Memo{
     }
 
     moveMemo(e){   
-        
-        if(this.moving){
-            this.div.style.top = `${e.clientY - this.movingYDist}px`;
-            this.div.style.left = `${e.clientX - this.movingXDist}px`;   
-        }
+        // Move memo subtracting moving distances to account for mouse offset position within the move div.
+        this.div.style.top = `${e.clientY - this.movingYDist}px`;
+        this.div.style.left = `${e.clientX - this.movingXDist}px`;   
+
     }
 
     resizeMemo(e){
-        if(this.resizing){
 
-            let height = e.clientY - this.position.top;
-            let width = e.clientX - this.position.left;
+        let height = e.clientY - this.position.top;
+        let width = e.clientX - this.position.left;
 
-            //limit the size to a minimum of 50 px * 50px
-            if(width >= 50 && height >= 50){
-                this.size.height = height
-                this.size.width = width
+        //limit the size to a minimum of 50 px * 50px
+        if(width >= 50 && height >= 50){
+
+            // Set sizes for future re-renders
+            this.size.height = height
+            this.size.width = width
                 
-                this.div.style.height = `${height}px`;
-                this.div.style.width = `${width}px`;  
-            }        
-        }
+            // Change the style to match dimensions
+            this.div.style.height = `${height}px`;
+            this.div.style.width = `${width}px`;  
+        }        
         updateLocalStorage()
     }
 
@@ -239,6 +242,7 @@ class Memo{
     }
 }
 
+// Initialize stored memos on page load
 
 localStorageMemos.forEach(memo => {
     let storedMemo = new Memo(
@@ -250,6 +254,7 @@ localStorageMemos.forEach(memo => {
     memoList.push(storedMemo);
 })
 
+// Function used to update local storage if any differences are identified
 function updateLocalStorage(){  
     if(localStorage.getItem('memos') != JSON.stringify(memoList)){
         console.log('Local storage updated')
@@ -257,4 +262,21 @@ function updateLocalStorage(){
     } 
 };
 
+// Global event listeners for memo size and positioning.
+window.addEventListener('mousemove', (e) => {
+    for(let i = 0; i < memoList.length; i++){
+        if(memoList[i].moving){
+            memoList[i].moveMemo(e);
+        }
 
+        if(memoList[i].resizing){
+            memoList[i].resizeMemo(e)
+        }
+    }
+})
+
+window.addEventListener('mouseup', () => {
+    for(let i = 0; i< memoList.length; i++){
+        memoList[i].mouseUp();
+    }
+})

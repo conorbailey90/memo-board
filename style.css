@@ -3,11 +3,17 @@
   --border-color: #bbf706;
   --memo-bg-color: #bbf70629;
 }
+/* 
+:root {
+  --main-bg-color: #000000;
+  --border-color: #06f3f7;
+  --memo-bg-color: #06f3f761;
+} */
 
 /* :root {
   --main-bg-color: #000000;
-  --border-color: #06f3f7;
-  --memo-bg-color: #06f3f729;
+  --border-color: #bbf706;
+  --memo-bg-color: #bbf70629;
 } */
 
 @font-face {
