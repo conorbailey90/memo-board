@@ -136,7 +136,7 @@ class Memo{
         this.moving = true 
 
         this.move.style.cursor = 'grabbing'
-        this.move.style.backgroundColor = '#bbf70655'
+        this.move.style.backgroundColor = '#fcc42a55'
         // determine where the grab cursor is to position the memo relative the the offset and mouse position.
         this.movingXDist = e.clientX - this.position.left;
         this.movingYDist = e.clientY - this.position.top;

@@ -21,7 +21,7 @@ function setDimentions(){
 function drawGrid(){
     ctx.fillStyle = 'transparent'
     ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle =  '#bbf70629';
+    ctx.fillStyle =  '#fcc42a29';
    
     
     for(let x = (width/ 100) / 2; x <= width; x+= Math.ceil(width / 100)){
